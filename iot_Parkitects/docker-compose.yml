@@ -1,0 +1,54 @@
+services:
+  parkitects-db-service:
+    build:
+      context: .
+      dockerfile: ./ParkitectsDB/Dockerfile
+    container_name: parkitects-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Password1!"
+      MSSQL_PID: "Express"
+    ports:
+      - "1433:1433"
+    volumes:
+      - parkitects_db_data:/var/opt/mssql
+    restart: unless-stopped
+    networks:
+      - parkitects-network
+
+  frontend-service:
+      build:
+        context: .
+        dockerfile: ./SecurityWebapp/securityWeb/frontend/Dockerfile           
+      container_name: parkitects-frontend
+      ports:
+        - "8081:8080"                             # <-- Droplet port 80 routes to container 8080
+      depends_on:
+        - backend-service
+      restart: unless-stopped
+      networks:
+        - parkitects-network 
+
+  backend-service:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    container_name: parkitects-backend
+    environment:
+      - SQL_CONNECTION_STRING=Server=parkitects-db;Database=DB;Trusted_Connection=false;MultipleActiveResultSets=true;Encrypt=false;user id=sa;password=Password1!
+      - ASPNETCORE_URLS=http://0.0.0.0:8080  # <-- FORCES C# TO LISTEN ON 8080 INTERNALLY
+      - ASPNETCORE_ENVIRONMENT=Development
+    ports:
+      - "8080:8080"
+    depends_on:
+      - parkitects-db-service
+    restart: unless-stopped
+    networks:
+      - parkitects-network
+
+networks:
+  parkitects-network:
+    driver: bridge
+
+volumes:
+  parkitects_db_data:
