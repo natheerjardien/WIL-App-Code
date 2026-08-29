@@ -9,12 +9,18 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  Alert // importing Alert so we can pop up error messages easily (React Native, 2026)
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Colors } from '@/constants/theme';
 
-export default function Example() {
+// pulling in the specific firebase registration function
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+// importing our custom auth setup
+import { auth } from '../../config/firebaseConfig';
+
+export default function SignUp() {
   const router = useRouter();
   const [form, setForm] = useState({
     name: '',
@@ -22,17 +28,40 @@ export default function Example() {
     password: '',
   });
 
+  const handleRegister = async () => {
+    // checks that they dont submit blank forms
+    if (!form.email || !form.password) {
+      Alert.alert('Hold up!', 'Please enter an email and password.');
+      return;
+    }
+
+    try {
+      // sends the email and password to firebase to create the account
+      const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password);
+      
+      Alert.alert('Success!', 'Your account has been created.');
+      
+      // takes them to the sign in page so they can log in
+      router.push('/auth/sign_in');
+      
+      // we will add an API call here later to send `form.name` to your .NET UserController
+    } catch (error: any) {
+      // if firebase complains about a weak password or existing email, this tells the user
+      Alert.alert('Registration Failed', error.message);
+    }
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, 
        backgroundColor: Colors.light.background,}}>
       <KeyboardAwareScrollView>
         <View style={styles.logoContainer}>
-        <Image
-          alt="My Shop logo"
-          resizeMode="cover"
-          source={require('@/assets/images/parki-splash.png')}
-          style={styles.logoImg} />
-</View>
+          <Image
+            alt="My Shop logo"
+            resizeMode="cover"
+            source={require('@/assets/images/parki-splash.png')}
+            style={styles.logoImg} />
+        </View>
         <View style={styles.form}>
           <Text style={styles.title}>Create a new account</Text>
 
@@ -76,25 +105,23 @@ export default function Example() {
           </View>
 
           <TouchableOpacity
-            onPress={() => {
-              // handle onPress
-               router.push('/auth/sign_in');
-            }}>
+          // routing through our new signup function (Firebase, 2026)
+            onPress={handleRegister}>
             <View style={styles.btn}>
               <Text style={styles.btnText}>Sign up now</Text>
             </View>
           </TouchableOpacity>
 
-<TouchableOpacity
-        onPress={() => {
-          // handle link
-             router.push('/auth/sign_in');
-        }}>
-          <Text style={styles.formFooter}>
-            Already have an account?
-            <Text style={{ color: '#0c6064' }}> Log in</Text>
-          </Text>
-</TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              router.push('/auth/sign_in');
+            }}>
+            <Text style={styles.formFooter}>
+              Already have an account?
+              <Text style={{ color: '#0c6064' }}> Log in</Text>
+            </Text>
+          </TouchableOpacity>
+
           <View style={styles.formSpacer}>
             <Text style={styles.formSpacerText}>Or Sign up with</Text>
 
@@ -252,5 +279,7 @@ const styles = StyleSheet.create({
 });
 /**
  * References
+ * Firebase, 2026. Password Authentication. [source code]. Available: <https://firebase.google.com/docs/auth/web/password-auth> [Accessed 28 August 2026].
+ * React Native, 2026. Alert. [source code]. Available: <https://reactnative.dev/docs/alert> [Accessed 28 August 2026].
  * Withfra.me. 2022. Ready to Use React Native Components - WithFrame | withfra.me. (Version 2.0) [Source code] Available at:<https://withfra.me/components > [Accessed 17 Aug. 2026].
  */

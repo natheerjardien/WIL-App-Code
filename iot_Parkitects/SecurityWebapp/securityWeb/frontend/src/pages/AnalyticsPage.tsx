@@ -135,7 +135,7 @@ export const AnalyticsPage: React.FC = () => {
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
 
   const handleChangePage = (
-    event: unknown,
+    _event: unknown,
     newPage: number
   ) => {
     setPage(newPage);

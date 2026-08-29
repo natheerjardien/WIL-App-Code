@@ -1,8 +1,0 @@
-C:\Users\27609\OneDrive\Documents\insy7315-2026-wil-coddell357\iot_Parkitects\backend\obj\Debug\net8.0\backend.csproj.AssemblyReference.cache
-C:\Users\27609\OneDrive\Documents\insy7315-2026-wil-coddell357\iot_Parkitects\backend\obj\Debug\net8.0\rpswa.dswa.cache.json
-C:\Users\27609\OneDrive\Documents\insy7315-2026-wil-coddell357\iot_Parkitects\backend\obj\Debug\net8.0\backend.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\27609\OneDrive\Documents\insy7315-2026-wil-coddell357\iot_Parkitects\backend\obj\Debug\net8.0\backend.AssemblyInfoInputs.cache
-C:\Users\27609\OneDrive\Documents\insy7315-2026-wil-coddell357\iot_Parkitects\backend\obj\Debug\net8.0\backend.AssemblyInfo.cs
-C:\Users\27609\OneDrive\Documents\insy7315-2026-wil-coddell357\iot_Parkitects\backend\obj\Debug\net8.0\backend.csproj.CoreCompileInputs.cache
-C:\Users\27609\OneDrive\Documents\insy7315-2026-wil-coddell357\iot_Parkitects\backend\obj\Debug\net8.0\backend.MvcApplicationPartsAssemblyInfo.cache
-C:\Users\27609\OneDrive\Documents\insy7315-2026-wil-coddell357\iot_Parkitects\backend\obj\Debug\net8.0\backend.sourcelink.json

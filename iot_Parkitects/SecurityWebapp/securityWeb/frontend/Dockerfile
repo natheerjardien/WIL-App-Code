@@ -32,7 +32,7 @@ COPY SecurityWebapp/securityWeb/frontend/nginx.conf /etc/nginx/nginx.conf
 COPY --chown=nginx:nginx --from=builder /app/dist /usr/share/nginx/html
 
 # Use a non-root user for security best practices
-USER nginx
+#USER nginx
 
 # Expose port 8080 to allow HTTP traffic
 # Note: The default NGINX container now listens on port 8080 instead of 80

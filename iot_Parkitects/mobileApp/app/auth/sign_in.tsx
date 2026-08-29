@@ -9,26 +9,53 @@ import {
   Text,
   TouchableOpacity,
   TextInput,
+  Alert // pulling in alerts to show login errors (React Native, 2026)
 } from 'react-native';
 import { Colors } from '@/constants/theme';
 
-export default function Example() {
+// importing the login function from firebase
+import { signInWithEmailAndPassword } from 'firebase/auth';
+// importing our custom auth setup
+import { auth } from '../../config/firebaseConfig';
+
+export default function SignIn() {
   const router = useRouter();
   const [form, setForm] = useState({
     email: '',
     password: '',
   });
+
+  // this fires when the user presses the login button
+  const handleLogin = async () => {
+    if (!form.email || !form.password) {
+      Alert.alert('Oops', 'Please fill in both your email and password.');
+      return;
+    }
+
+    try {
+      // checking the credentials against firebase
+      const userCredential = await signInWithEmailAndPassword(auth, form.email, form.password);
+      
+      // if it passes, they are granted access to the app
+      router.replace('/accessability');
+      
+    } catch (error: any) {
+      // wrong password or email throws an alert
+      Alert.alert('Login Failed', 'Invalid email or password. Please try again.');
+    }
+  };
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.container}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-          <Image
-            alt="App Logo"
-            resizeMode="contain"
-            style={styles.headerImg}
-            source={require('@/assets/images/parki-splash.png')}/>
-</View>
+            <Image
+              alt="App Logo"
+              resizeMode="contain"
+              style={styles.headerImg}
+              source={require('@/assets/images/parki-splash.png')}/>
+          </View>
           <Text style={styles.title}>
             Sign in to <Text style={{ color: '#118091' }}>Parkitech</Text>
           </Text>
@@ -70,10 +97,8 @@ export default function Example() {
 
           <View style={styles.formAction}>
             <TouchableOpacity
-              onPress={() => {
-                // handle onPress
-                  router.replace('/accessability');
-              }}>
+            // routing through our new login function (Firebase, 2026)
+              onPress={handleLogin}>
               <View style={styles.btn}>
                 <Text style={styles.btnText}>Sign in</Text>
               </View>
@@ -212,5 +237,7 @@ const styles = StyleSheet.create({
 });
 /**
  * References
+ * Firebase, 2026. Password Authentication. [source code]. Available: <https://firebase.google.com/docs/auth/web/password-auth> [Accessed 28 August 2026].
+ * React Native, 2026. Alert. [source code]. Available: <https://reactnative.dev/docs/alert> [Accessed 28 August 2026].
  * Withfra.me. 2022. Ready to Use React Native Components - WithFrame | withfra.me. (Version 2.0) [Source code] Available at:<https://withfra.me/components > [Accessed 17 Aug. 2026].
  */

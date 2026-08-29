@@ -1,4 +1,3 @@
-import React from "react";
 import car from "../assets/car.png";
 
 type ParkingBayProps = {
