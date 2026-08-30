@@ -1,5 +1,5 @@
 //(Withfra.me, 2022)
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import {
   StyleSheet,
@@ -16,7 +16,9 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Colors } from '@/constants/theme';
 
 // pulling in the specific firebase registration function
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+// Native Google Sign-In module
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 // importing our custom auth setup
 import { auth } from '../../config/firebaseConfig';
 
@@ -27,6 +29,14 @@ export default function SignUp() {
     email: '',
     password: '',
   });
+
+  // Configures the native Google sign in
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com', // Replace with your Firebase Web Client ID
+      offlineAccess: true,
+    });
+  }, []);
 
   const handleRegister = async () => {
     // checks that they dont submit blank forms
@@ -48,6 +58,32 @@ export default function SignUp() {
     } catch (error: any) {
       // if firebase complains about a weak password or existing email, this tells the user
       Alert.alert('Registration Failed', error.message);
+    }
+  };
+
+  // Handler for Native Google Sign-In
+  const handleGoogleSignIn = async () => {
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      
+      const response = await GoogleSignin.signIn();
+      
+      // Handle the modern discriminated union response safely
+      if (response.type === 'success') {
+        const idToken = response.data.idToken;
+        
+        if (!idToken) {
+          throw new Error("No ID token returned from Google");
+        }
+
+        const credential = GoogleAuthProvider.credential(idToken);
+        const userCredential = await signInWithCredential(auth, credential);
+        
+        Alert.alert('Success!', 'Successfully signed in with Google.');
+        router.push('/(tabs)');
+      }      
+    } catch (error: any) {
+      Alert.alert('Google Sign-In Failed', error.message);
     }
   };
 
@@ -105,7 +141,7 @@ export default function SignUp() {
           </View>
 
           <TouchableOpacity
-          // routing through our new signup function (Firebase, 2026)
+          // routing through our new signup function (Firebase, 2026b)
             onPress={handleRegister}>
             <View style={styles.btn}>
               <Text style={styles.btnText}>Sign up now</Text>
@@ -131,9 +167,8 @@ export default function SignUp() {
           <View style={styles.btnGroup}>
            
             <TouchableOpacity
-              onPress={() => {
-                // handle onPress
-              }}
+              // routing through our new Google signup function (Firebase, 2026a)
+              onPress={handleGoogleSignIn}
               style={{ flex: 1, paddingHorizontal: 6 }}>
               <View style={styles.btnGoogle}>
                 <MaterialCommunityIcons
@@ -279,7 +314,9 @@ const styles = StyleSheet.create({
 });
 /**
  * References
- * Firebase, 2026. Password Authentication. [source code]. Available: <https://firebase.google.com/docs/auth/web/password-auth> [Accessed 28 August 2026].
+ * Expo, 2026. AuthSession. [source code]. Available: <https://docs.expo.dev/versions/latest/sdk/auth-session/> [Accessed 29 August 2026].
+ * Firebase, 2026a. Authenticate Using Google Sign-In with JavaScript. [source code]. Available: <https://firebase.google.com/docs/auth/web/google-signin> [Accessed 29 August 2026]. 
+ * Firebase, 2026b. Password Authentication. [source code]. Available: <https://firebase.google.com/docs/auth/web/password-auth> [Accessed 28 August 2026].
  * React Native, 2026. Alert. [source code]. Available: <https://reactnative.dev/docs/alert> [Accessed 28 August 2026].
  * Withfra.me. 2022. Ready to Use React Native Components - WithFrame | withfra.me. (Version 2.0) [Source code] Available at:<https://withfra.me/components > [Accessed 17 Aug. 2026].
- */
+*/

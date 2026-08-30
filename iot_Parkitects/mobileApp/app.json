@@ -17,7 +17,8 @@
         "foregroundImage": "./assets/images/parki-logo.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.natheerjardiensteam.MobileApp"
     },
     "web": {
       "output": "static",
@@ -37,11 +38,18 @@
           }
         }
       ],
-      "react-native-permissions"
+      "react-native-permissions",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5c23143e-6683-491c-8b38-2f2ad457995e"
+      }
     }
   }
 }
