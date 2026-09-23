@@ -1,18 +1,29 @@
 //(Withfra.me, 2022)
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
+import * as Location from 'expo-location' //(CoddyKit, 2026)
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
+
+// importing our custom auth setup
+import { auth } from '../../config/firebaseConfig';
 import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
   View,
-  Text,
   TouchableOpacity,
   Switch,
+  Alert,
 } from 'react-native';
 import FeatherIcon from '@expo/vector-icons/Feather';
 import RBSheet from 'react-native-raw-bottom-sheet';
+import { ThemedText } from '@/components/themed-text'
+import { useAccessibility } from '@/context/accessibilityContext';
 
+//THE API BASE URL- TO BE CHANGED (same as tickets one-natasha)
+const API_BASE_URL = 'http://192.168.0.183:8080';
 const options = [
   { name: 'Terrible', icon: '😩' },
   { name: 'Bad', icon: '🙁' },
@@ -27,22 +38,146 @@ export default function SettingsScreen() {
   const [value, setValue] = useState(4);
   const sheet = useRef<any>(null);
   const router = useRouter();
+  const[locationDisplay, setLocationDisplay] = useState('');
+
+  const { theme } = useAccessibility();
 
   const [form, setForm] = useState({
     emailNotifications: true,
     pushNotifications: false,
   });
 
+  //Displaying the location
+  useFocusEffect( //(Kumaar, 2025)
+    useCallback(() => {
+      const currentLocation = async () => {
+        const currentUser = auth.currentUser;
+        if(!currentUser) {
+          return;
+        }
+          //(Singh, 2024)
+        const {status} = await Location.getForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          return; //does not reprompt the user- this can be linked to the permissions screen or some sort of notification prompt idea
+        }
+        
+        try {
+          //gets the current position
+          const position = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+
+          //provide the latitude and longitude to get the actual address
+          const geocode = await Location.reverseGeocodeAsync({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+
+          const place = geocode[0];
+          const locationLabel = place ? `${place.city ?? place.subregion ?? ''}, ${place.region ?? ''}`.trim() : null;
+
+          if(locationLabel) {
+            const existingPreference = await fetch (`${API_BASE_URL}/api/Preferences/user/${currentUser.uid}`);
+            const existing = existingPreference.ok ? await existingPreference.json() : {};
+
+            await fetch(`${API_BASE_URL}/api/Preferences/user/${currentUser.uid}`, {
+              method: 'PUT',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({...existing, location: locationLabel, userID: currentUser.uid}),
+            });
+
+            setForm((prev) => ({ ...prev }))
+
+            setLocationDisplay(locationLabel) //location gets stored locally-better approach since it refreshes when user goes to settings screen only not always syncing in the background
+          }
+        } catch (error) { }
+      };
+      currentLocation();
+    }, [])
+  );
+
+    //loads default settings values
+//(Spencer,2024)
+    useEffect(() => {
+        const fetchSettings = async () => {
+            const currentUser = auth.currentUser //identifies the user from firebase authentication
+            if (!currentUser) {
+                return;
+            }
+
+            try {
+
+                const response = await fetch(`${API_BASE_URL}/api/Settings/user/${currentUser.uid}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch settings Screen');
+                }
+
+                const settings = await response.json();
+                setForm({
+                    emailNotifications: settings.emailNotification,
+                    pushNotifications: settings.pushNotification,
+                });
+            } catch (error) {
+                Alert.alert('Error', 'Error fetching your app settings preferences. Please try again.');
+            }
+        };
+        fetchSettings();
+    }, []);
+
+    //(Syed, 2023)
+    const savePreferences = async (updated: Partial<typeof form>) => {
+        const currentUser = auth.currentUser;
+        if (!currentUser) return;
+
+        //(Holeczek, 2023)
+        //merging the state so that updates to the users selected preferences
+        const merged = { ...form, ...updated };
+        setForm(merged);
+
+        try {
+            const existingPreferences = await fetch(`${API_BASE_URL}/api/Preferences/user/${currentUser.uid}`);
+            const existing = existingPreferences.ok ? await existingPreferences.json() : {};
+
+            //(Fahim, 2026)
+            await fetch(`${API_BASE_URL}/api/Settings/user/${currentUser.uid}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...existing, ...merged, userID: currentUser.uid }),
+            });
+        } catch (error) {
+            Alert.alert('Errór', 'Failed to save your preferences.Please try again');
+        }
+    };
+
   const handleOpenSheet = () => {
     sheet.current?.open();
   };
 
-  const handleCloseSheet = () => {
+    const handleCloseSheet = async () => {
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+            try {
+                await fetch(`${API_BASE_URL}/api/Ratings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userID: currentUser.uid,
+                        value,
+                        label: options[value].name,
+                    }),
+                });
+                sheet.current?.close();
+                Alert.alert('Thank you!', 'Feedback submitted successfully.');
+            } catch (error) {
+                Alert.alert('Error','Failed to submit rating. Please try again');
+            }
+        } else{
     sheet.current?.close();
+        }
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F7FAFB' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
       {/* Top Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -52,9 +187,9 @@ export default function SettingsScreen() {
           <FeatherIcon color="#0F172A" name="arrow-left" size={22} />
         </TouchableOpacity>
 
-        <Text numberOfLines={1} style={styles.headerTitle}>
+        <ThemedText numberOfLines={1} style={styles.headerTitle}>
           Settings
-        </Text>
+        </ThemedText>
 
         <TouchableOpacity style={styles.headerAction}>
           <FeatherIcon color="#0F172A" name="more-vertical" size={22} />
@@ -62,13 +197,13 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.headerSubtitle}>
+        <ThemedText style={styles.headerSubtitle}>
           Manage your personal details and security preferences below.
-        </Text>
+        </ThemedText>
 
         {/* ACCOUNT SECTION */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ACCOUNT</Text>
+          <ThemedText style={styles.sectionTitle}>ACCOUNT</ThemedText>
           <View style={styles.sectionBody}>
             <TouchableOpacity
               onPress={() => router.push('/settings/profie')}
@@ -76,8 +211,8 @@ export default function SettingsScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.profileBody}>
-                <Text style={styles.profileName}>Marcus Aimes</Text>
-                <Text style={styles.profileHandle}>ST1289066</Text>
+                <ThemedText style={styles.profileName}>Marcus Aimes</ThemedText>
+                <ThemedText style={styles.profileHandle}>ST1289066</ThemedText>
               </View>
               <FeatherIcon color="#94A3B8" name="chevron-right" size={20} />
             </TouchableOpacity>
@@ -86,33 +221,34 @@ export default function SettingsScreen() {
 
         {/* PREFERENCES SECTION */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
+          <ThemedText style={styles.sectionTitle}>Preferences</ThemedText>
           <View style={styles.sectionBody}>
             <View style={[styles.rowWrapper, styles.rowFirst]}>
               <TouchableOpacity style={styles.row} activeOpacity={0.7}>
-                <Text style={styles.rowLabel}>Language</Text>
+                <ThemedText style={styles.rowLabel}>Language</ThemedText>
                 <View style={styles.rowSpacer} />
-                <Text style={styles.rowValue}>English</Text>
+                <ThemedText style={styles.rowValue}>English</ThemedText>
                 <FeatherIcon color="#94A3B8" name="chevron-right" size={18} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.rowWrapper}>
               <TouchableOpacity style={styles.row} activeOpacity={0.7}>
-                <Text style={styles.rowLabel}>Location</Text>
+                <ThemedText style={styles.rowLabel}>Location</ThemedText>
                 <View style={styles.rowSpacer} />
-                <Text style={styles.rowValue}>Los Angeles, CA</Text>
+                <ThemedText style={styles.rowValue}>{locationDisplay || 'Port Elizabeth, SA'}</ThemedText>
                 <FeatherIcon color="#94A3B8" name="chevron-right" size={18} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.rowWrapper}>
               <View style={styles.row}>
-                <Text style={styles.rowLabel}>Email Notifications</Text>
-                <View style={styles.rowSpacer} />
+                <ThemedText style={styles.rowLabel}>Email Notifications</ThemedText>
+                              <View style={styles.rowSpacer} />
+             {/* Notifications depends on savePreference method that user can change*/}
                 <Switch
                   onValueChange={(emailNotifications) =>
-                    setForm({ ...form, emailNotifications })
+                    savePreferences({emailNotifications })
                   }
                   trackColor={{ false: '#E2E8F0', true: '#0D5265' }}
                   value={form.emailNotifications}
@@ -122,11 +258,12 @@ export default function SettingsScreen() {
 
             <View style={[styles.rowWrapper, styles.rowLast]}>
               <View style={styles.row}>
-                <Text style={styles.rowLabel}>Push Notifications</Text>
-                <View style={styles.rowSpacer} />
+                <ThemedText style={styles.rowLabel}>Push Notifications</ThemedText>
+                              <View style={styles.rowSpacer} />
+           {/* Notifications depends on savePreference method that user can change*/}
                 <Switch
                   onValueChange={(pushNotifications) =>
-                    setForm({ ...form, pushNotifications })
+                    savePreferences({pushNotifications })
                   }
                   trackColor={{ false: '#E2E8F0', true: '#0D5265' }}
                   value={form.pushNotifications}
@@ -138,15 +275,15 @@ export default function SettingsScreen() {
 
         {/* RESOURCES SECTION */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Resources</Text>
+          <ThemedText style={styles.sectionTitle}>Resources</ThemedText>
           <View style={styles.sectionBody}>
             <View style={[styles.rowWrapper, styles.rowFirst]}>
               <TouchableOpacity
-                onPress={() => router.push('/settings/preferences')}
+                onPress={() => router.push('/settings/accessability')}
                 style={styles.row}
                 activeOpacity={0.7}
               >
-                <Text style={styles.rowLabel}>Accessibility</Text>
+                <ThemedText style={styles.rowLabel}>Accessibility</ThemedText>
                 <View style={styles.rowSpacer} />
                 <FeatherIcon color="#94A3B8" name="chevron-right" size={18} />
               </TouchableOpacity>
@@ -154,7 +291,7 @@ export default function SettingsScreen() {
 
             <View style={styles.rowWrapper}>
               <TouchableOpacity style={styles.row} activeOpacity={0.7}>
-                <Text style={styles.rowLabel}>Report Bug</Text>
+                <ThemedText style={styles.rowLabel}>Report Bug</ThemedText>
                 <View style={styles.rowSpacer} />
                 <FeatherIcon color="#94A3B8" name="chevron-right" size={18} />
               </TouchableOpacity>
@@ -167,15 +304,15 @@ export default function SettingsScreen() {
                 style={styles.row}
                 activeOpacity={0.7}
               >
-                <Text style={styles.rowLabel}>Rate Parkitech</Text>
+                <ThemedText style={styles.rowLabel}>Rate Parkitech</ThemedText>
                 <View style={styles.rowSpacer} />
                 <FeatherIcon color="#94A3B8" name="chevron-right" size={18} />
               </TouchableOpacity>
             </View>
 
             <View style={[styles.rowWrapper, styles.rowLast]}>
-              <TouchableOpacity style={styles.row} activeOpacity={0.7}>
-                <Text style={styles.rowLabel}>Campus Parking Rules</Text>
+              <TouchableOpacity onPress={() => router.push('/settings/rules')}style={styles.row} activeOpacity={0.7}>
+                <ThemedText style={styles.rowLabel}>Campus Parking Rules</ThemedText>
                 <View style={styles.rowSpacer} />
                 <FeatherIcon color="#94A3B8" name="chevron-right" size={18} />
               </TouchableOpacity>
@@ -185,7 +322,7 @@ export default function SettingsScreen() {
 
         {/* LOGOUT */}
         <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.8}>
-          <Text style={styles.logoutText}>Log Out</Text>
+          <ThemedText style={styles.logoutText}>Log Out</ThemedText>
         </TouchableOpacity>
       </ScrollView>
 
@@ -200,15 +337,15 @@ export default function SettingsScreen() {
         }}
       >
         <View style={styles.sheetHeader}>
-          <Text style={styles.sheetHeaderTitle}>Rate Your Experience</Text>
-          <Text style={styles.sheetHeaderSubtitle}>
+          <ThemedText style={styles.sheetHeaderTitle}>Rate Your Experience</ThemedText>
+          <ThemedText style={styles.sheetHeaderSubtitle}>
             How is your experience using Parkitech?
-          </Text>
+          </ThemedText>
         </View>
 
         <View style={styles.sheetBody}>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>{options[value].name}</Text>
+            <ThemedText style={styles.badgeText}>{options[value].name}</ThemedText>
           </View>
 
           <View style={styles.options}>
@@ -224,7 +361,7 @@ export default function SettingsScreen() {
                   onPress={() => setValue(index)}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.optionText}>{item.icon}</Text>
+                  <ThemedText style={styles.optionText}>{item.icon}</ThemedText>
                 </TouchableOpacity>
               );
             })}
@@ -235,7 +372,7 @@ export default function SettingsScreen() {
             onPress={handleCloseSheet}
             activeOpacity={0.8}
           >
-            <Text style={styles.btnText}>Submit Rating</Text>
+            <ThemedText style={styles.btnText}>Submit Rating</ThemedText>
           </TouchableOpacity>
         </View>
       </RBSheet>
@@ -369,7 +506,6 @@ const styles = StyleSheet.create({
     color: '#EF4444',
   },
 
-  /* RBSheet css*/
   sheetContainer: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -447,7 +583,17 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
-/**
- * References
- * Withfra.me. 2022. Ready to Use React Native Components - WithFrame | withfra.me. (Version 2.0) [Source code] Available at:<https://withfra.me/components > [Accessed 17 Aug. 2026].
- */
+/*
+*
+* References
+* 
+* CoddyKit, 2026. Reading GPS Location with expo location. (Version 10.0) [Source Code] Available at: < https://www.coddykit.com/courses/learn_react_native/reading-gps-location-with-expo-location-10687394 > [Accessed 2 Septemeber 2026]
+* Expo Documentation, 2026. Expo Location. (Version 10.0) [Source Code] Available at:< https://docs.expo.dev/versions/latest/sdk/location/ > [Accessed 2 September 2026]
+* Fahim, M., 2026. Mastering the Fetch API with real-life javascript examples. (Version 2.0) [Source Code] Available at: < https://dev.to/mdfahim18/mastering-the-fetch-api-with-real-life-javascript-examples-eke > [Accessed 3 September 2026]
+* Holeczek, K., 2023. Mastering the spread operator ('...') in react.js. (Version 2.0) [Source Code] Available at: < https://coreui.io/blog/draft-how-to-replace-all-occurrences-of-a-string-in-javascript/ > [Accessed 3 September 2026] 
+* Kumaar, A., 2025. When to use useEffect and UseFocusEffect in React or React Native: A deep dive. (Version 10.0) [Source Code] Available at: < https://blog.stackademic.com/when-to-use-useeffect-and-usefocuseffect-in-react-or-react-native-a-deep-dive-a02f8df7131c > [Accessed 2 September 2026]
+* Singh, A., 2024. Expo Location: How to get the location in adnroid and ios using reverse Geo location. (Version 10.0) [Source Code] Available at: < https://medium.com/@ashu6530/expo-location-how-to-get-the-location-in-android-and-ios-using-reverse-geo-location-5f40a3b19e3b > [Accessed 2 September 2026]
+* Spencer,P., 2024. The Full stack (React & ASP.NET)- 12 - UseEffect.[video online] (Version 10.0) [Source Code] Available at: < https://youtu.be/tJxBtmg-92w?si=NYNfh-oL9nZO0EFb > [Accessed 30 August 2026]
+* Syed, A.B., 2023. Using built-in utility types in typescript. (Version 2.0) [Source Code] Available at: < https://blog.logrocket.com/using-built-in-utility-types-typescript/ > [Accessed 4 September 2026]
+* Withfra.me. 2022. Ready to Use React Native Components - WithFrame | withfra.me. (Version 2.0) [Source code] Available at:<https://withfra.me/components > [Accessed 17 Aug. 2026].
+*/

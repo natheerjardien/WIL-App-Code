@@ -71,7 +71,9 @@ export default function HomeHeader() {
               // handle onPress
                router.push('/auth/sign_in');
             }}
+            
             style={styles.headerAction}>
+              
             <Feather
               color="#e2f1f3"
               name="arrow-right"

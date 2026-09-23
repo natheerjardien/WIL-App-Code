@@ -182,3 +182,64 @@
     border-right-color: var(--border);
   }
 }
+
+.password-requirements {
+  margin-top: 8px;
+  padding: 0;
+  background: transparent;
+  color: #ffffff !important;
+
+  /* Match Username/Password label */
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 400;
+
+  line-height: 1.5;
+}
+
+.password-requirements p {
+  margin: 0 0 5px 0;
+  color: #ffffff !important;
+
+  /* Same size as labels, but NOT bold */
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 400;
+}
+
+.requirement {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 3px 0;
+
+  color: #ffffff !important;
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.requirement > span:last-child {
+  color: #ffffff !important;
+  font-weight: 400;
+}
+
+.requirement-icon {
+  width: 14px;
+  text-align: center;
+  color: #ffffff !important;
+  font-weight: 400;
+}
+
+.requirement-valid {
+  color: #ffffff !important;
+  font-weight: 400;
+}
+
+.requirement-valid .requirement-icon {
+  color: #168a62 !important;
+  font-weight: 400;
+}
+
+

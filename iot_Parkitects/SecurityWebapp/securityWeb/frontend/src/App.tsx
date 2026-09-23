@@ -17,11 +17,15 @@ import { TicketResponsesPage } from "./pages/TicketResponsesPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { Login } from "./pages/Login";
+import { Register } from "./pages/Register";
 
 const AppContent: React.FC = () => {
   const location = useLocation();
 
-  const isLoginPage = location.pathname === "/login";
+  // const isLoginPage = location.pathname === "/login";
+  const isLoginPage =
+  location.pathname === "/login" ||
+  location.pathname === "/register";
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   return (
     <div
@@ -45,6 +49,11 @@ const AppContent: React.FC = () => {
 
         <main className={isLoginPage ? "" : "page-wrap"}>
           <Routes>
+
+            <Route
+              path="/register"
+              element={<Register />}
+            />
 
             {/* Login */}
             <Route
@@ -86,9 +95,14 @@ const AppContent: React.FC = () => {
             />
 
             {/* Root */}
-            <Route
+            {/* <Route
               path="/"
               element={<Navigate to="/login" replace />}
+            /> */}
+
+            <Route
+              path="/"
+              element={<Navigate to="/register" replace />}
             />
 
             {/* Unknown URL */}

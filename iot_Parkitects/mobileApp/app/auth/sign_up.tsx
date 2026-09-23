@@ -1,5 +1,5 @@
 //(Withfra.me, 2022)
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
   StyleSheet,
@@ -16,9 +16,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Colors } from '@/constants/theme';
 
 // pulling in the specific firebase registration function
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
-// Native Google Sign-In module
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 // importing our custom auth setup
 import { auth } from '../../config/firebaseConfig';
 
@@ -28,62 +26,56 @@ export default function SignUp() {
     name: '',
     email: '',
     password: '',
+    userRole: 'Student', // default role for new users
+    userNumber: ''
   });
-
-  // Configures the native Google sign in
-  useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com', // Replace with your Firebase Web Client ID
-      offlineAccess: true,
-    });
-  }, []);
 
   const handleRegister = async () => {
     // checks that they dont submit blank forms
-    if (!form.email || !form.password) {
-      Alert.alert('Hold up!', 'Please enter an email and password.');
+    if (!form.name ||!form.email || !form.password || !form.userNumber) {
+      Alert.alert('Hold up!', 'Please enter your name, email, password and user number.');
       return;
     }
 
     try {
+      // Creates the secure account in Firebase
       // sends the email and password to firebase to create the account
       const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password);
+      const firebaseUid = userCredential.user.uid; // Grab the secure ID
+      
+      // Syncs the profile data to our .NET SQL Database
+      // Pulls the IP address from the local .env file (Expo, 2026)
+      const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}/api/User/sync`;
+
+      const backendResponse = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firebaseUid: firebaseUid,
+          userNumber: form.userNumber,
+          name: form.name,
+          email: form.email,
+          userRole: form.userRole
+        })
+      });
+
+      if (!backendResponse.ok) 
+      {
+        const errorText = await backendResponse.text();
+        throw new Error(`Server returned error: ${errorText}`);
+      }
       
       Alert.alert('Success!', 'Your account has been created.');
       
       // takes them to the sign in page so they can log in
       router.push('/auth/sign_in');
-      
-      // we will add an API call here later to send `form.name` to your .NET UserController
-    } catch (error: any) {
+    } 
+    catch (error: any) 
+    {
       // if firebase complains about a weak password or existing email, this tells the user
       Alert.alert('Registration Failed', error.message);
-    }
-  };
-
-  // Handler for Native Google Sign-In
-  const handleGoogleSignIn = async () => {
-    try {
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      
-      const response = await GoogleSignin.signIn();
-      
-      // Handle the modern discriminated union response safely
-      if (response.type === 'success') {
-        const idToken = response.data.idToken;
-        
-        if (!idToken) {
-          throw new Error("No ID token returned from Google");
-        }
-
-        const credential = GoogleAuthProvider.credential(idToken);
-        const userCredential = await signInWithCredential(auth, credential);
-        
-        Alert.alert('Success!', 'Successfully signed in with Google.');
-        router.push('/(tabs)');
-      }      
-    } catch (error: any) {
-      Alert.alert('Google Sign-In Failed', error.message);
     }
   };
 
@@ -128,6 +120,36 @@ export default function SignUp() {
               value={form.email} />
           </View>
 
+          {/* custom radio button layout for role selection */}
+          <View style={styles.radioContainer}>
+            <TouchableOpacity 
+              style={[styles.radioButton, form.userRole === 'Student' && styles.radioSelected]} 
+              onPress={() => setForm({ ...form, userRole: 'Student' })}
+            >
+              <Text style={form.userRole === 'Student' ? styles.textSelected : styles.textUnselected}>Student</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.radioButton, form.userRole === 'Lecturer' && styles.radioSelected]} 
+              onPress={() => setForm({ ...form, userRole: 'Lecturer' })}
+            >
+              <Text style={form.userRole === 'Lecturer' ? styles.textSelected : styles.textUnselected}>Lecturer</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* dynamic input that changes based on the selected radio button */}
+          <View style={styles.input}>
+            <TextInput
+              autoCapitalize="none"
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+              onChangeText={userNumber => setForm({ ...form, userNumber })}
+              placeholder={form.userRole === 'Student' ? "Student Number" : "Lecturer / Staff ID"}
+              placeholderTextColor="#A5A5AE"
+              style={styles.inputControl}
+              value={form.userNumber} />
+          </View>
+
           <View style={styles.input}>
             <TextInput
               autoCorrect={false}
@@ -141,7 +163,7 @@ export default function SignUp() {
           </View>
 
           <TouchableOpacity
-          // routing through our new signup function (Firebase, 2026b)
+          // routing through our new signup function (Firebase, 2026)
             onPress={handleRegister}>
             <View style={styles.btn}>
               <Text style={styles.btnText}>Sign up now</Text>
@@ -167,8 +189,9 @@ export default function SignUp() {
           <View style={styles.btnGroup}>
            
             <TouchableOpacity
-              // routing through our new Google signup function (Firebase, 2026a)
-              onPress={handleGoogleSignIn}
+              onPress={() => {
+                // handle onPress
+              }}
               style={{ flex: 1, paddingHorizontal: 6 }}>
               <View style={styles.btnGoogle}>
                 <MaterialCommunityIcons
@@ -266,6 +289,38 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#222',
   },
+  /** Radio Buttons */
+  radioContainer: 
+  { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    marginBottom: 12 
+  },
+  radioButton: 
+  { 
+    flex: 0.48, 
+    paddingVertical: 10, 
+    borderWidth: 1, 
+    borderColor: '#C9D3DB', 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    backgroundColor: '#EFF1F5' 
+  },
+  radioSelected: 
+  { 
+    backgroundColor: '#0c4b64', 
+    borderColor: '#0c4b64' 
+  },
+  textSelected: 
+  { 
+    color: '#fff', 
+    fontWeight: '600' 
+  },
+  textUnselected: 
+  { 
+    color: '#A5A5AE', 
+    fontWeight: '500'
+  },
   /** Button */
   btn: {
     flexDirection: 'row',
@@ -314,9 +369,8 @@ const styles = StyleSheet.create({
 });
 /**
  * References
- * Expo, 2026. AuthSession. [source code]. Available: <https://docs.expo.dev/versions/latest/sdk/auth-session/> [Accessed 29 August 2026].
- * Firebase, 2026a. Authenticate Using Google Sign-In with JavaScript. [source code]. Available: <https://firebase.google.com/docs/auth/web/google-signin> [Accessed 29 August 2026]. 
- * Firebase, 2026b. Password Authentication. [source code]. Available: <https://firebase.google.com/docs/auth/web/password-auth> [Accessed 28 August 2026].
+ * Expo, 2026. Environment variables in Expo. [online] Available at: <https://docs.expo.dev/guides/environment-variables/> [Accessed 30 August 2026].
+ * Firebase, 2026. Password Authentication. [source code]. Available: <https://firebase.google.com/docs/auth/web/password-auth> [Accessed 28 August 2026].
  * React Native, 2026. Alert. [source code]. Available: <https://reactnative.dev/docs/alert> [Accessed 28 August 2026].
  * Withfra.me. 2022. Ready to Use React Native Components - WithFrame | withfra.me. (Version 2.0) [Source code] Available at:<https://withfra.me/components > [Accessed 17 Aug. 2026].
-*/
+ */

@@ -21,27 +21,44 @@ import { auth } from '../../config/firebaseConfig';
 export default function SignIn() {
   const router = useRouter();
   const [form, setForm] = useState({
-    email: '',
+    userNumber: '',
     password: '',
   });
 
   // this fires when the user presses the login button
   const handleLogin = async () => {
-    if (!form.email || !form.password) {
-      Alert.alert('Oops', 'Please fill in both your email and password.');
+    if (!form.userNumber || !form.password) 
+    {
+      Alert.alert('Oops', 'Please fill in both your user number and password.');
       return;
     }
 
-    try {
-      // checking the credentials against firebase
-      const userCredential = await signInWithEmailAndPassword(auth, form.email, form.password);
+    try 
+    {
+      // hits the .net backend to find the email associated with this user number
+      const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}/api/User/resolve-email/${form.userNumber}`;
+      const response = await fetch(apiUrl);
+      
+      if (!response.ok) 
+      {
+        Alert.alert('Login Failed', 'User number not found.');
+        return;
+      }
+      
+      const data = await response.json();
+      const resolvedEmail = data.email;
+
+      // checks the found email and password against firebase (Firebase, 2026)
+      await signInWithEmailAndPassword(auth, resolvedEmail, form.password);
       
       // if it passes, they are granted access to the app
-      router.replace('/accessability');
+      router.replace('/permissions');
       
-    } catch (error: any) {
-      // wrong password or email throws an alert
-      Alert.alert('Login Failed', 'Invalid email or password. Please try again.');
+    } 
+    catch (error: any) 
+    {
+      // wrong password or user number throws an alert
+      Alert.alert('Login Failed', 'Invalid user number or password. Please try again.');
     }
   };
 
@@ -67,18 +84,18 @@ export default function SignIn() {
 
         <View style={styles.form}>
           <View style={styles.input}>
-            <Text style={styles.inputLabel}>Email address</Text>
+            <Text style={styles.inputLabel}>User Number</Text>
 
             <TextInput
               autoCapitalize="none"
               autoCorrect={false}
               clearButtonMode="while-editing"
               keyboardType="email-address"
-              onChangeText={email => setForm({ ...form, email })}
-              placeholder="john@example.com"
+              onChangeText={userNumber => setForm({ ...form, userNumber })}
+              placeholder="ST___________/LR___________"
               placeholderTextColor="#6b7280"
               style={styles.inputControl}
-              value={form.email} />
+              value={form.userNumber} />
           </View>
 
           <View style={styles.input}>
@@ -121,7 +138,7 @@ export default function SignIn() {
         }}>
         <Text style={styles.formFooter}>
           Don't have an account?{' '}
-          <Text style={{ textDecorationLine: 'underline' }}>Sign up</Text>
+          <Text style={{ textDecorationLine: 'underline', color: '#0c6064' }}>Sign up</Text>
         </Text>
       </TouchableOpacity>
     </SafeAreaView>

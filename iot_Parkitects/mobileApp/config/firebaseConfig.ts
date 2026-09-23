@@ -1,7 +1,11 @@
 // importing the core firebase app initializer (Expo, 2026).
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
 // pulling in just the auth module so we dont bloat the app size (Firebase, 2026).
-import { getAuth } from 'firebase/auth'; 
+import { getAuth, initializeAuth } from 'firebase/auth'; 
+// @ts-ignore
+import { getReactNativePersistence } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDbL55frdOhcMZPmW3HiUFhBb7AWbj6Nwg",
@@ -14,11 +18,15 @@ const firebaseConfig = {
   measurementId: "G-98T1959MMK"
 };
 
-// booting up the firebase app
-const app = initializeApp(firebaseConfig);
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
-// exporting this auth instance so we can link it into our login/register pages easily (Firebase, 2026).
-export const auth = getAuth(app);
+const auth = Platform.OS === 'web' 
+  ? getAuth(app) 
+  : initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage)
+    });
+
+export { auth };
 
 /* Reference list:
 
